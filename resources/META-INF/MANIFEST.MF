@@ -1,0 +1,13 @@
+MIDlet-Name: AnInterativeJavaBot
+MIDlet-Version: 1.0.0
+MIDlet-Vendor: FIRST
+MIDlet-1: AnInterativeJavaBot, , frc.t4069.year2.robots.AnInterativeJavaBot
+MicroEdition-Profile: IMP-1.0
+MicroEdition-Configuration: CLDC-1.1
+
+
+
+
+
+
+
