@@ -3,6 +3,7 @@ package frc.t4069.year2.robots.subsystems;
 import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.RobotPorts;
+import frc.t4069.year2.utils.math.LowPassFilter;
 
 /**
  * RobotDrive is obviously too complicated, amirite? This class includes a low
@@ -19,12 +20,13 @@ import frc.t4069.year2.robots.RobotPorts;
  * @author Mostly Shuhao
  */
 public class DriveTrain {
+
 	private static DriveTrain drivetrain;
 
 	private SpeedController m_leftJaguar;
 	private SpeedController m_rightJaguar;
-	// private LowPassFilter m_leftLP;
-	// private LowPassFilter m_rightLP;
+	private LowPassFilter m_leftLP;
+	private LowPassFilter m_rightLP;
 
 	private double m_limit = 1.0;
 	private double m_leftLimit = 1.0;
@@ -39,7 +41,6 @@ public class DriveTrain {
 
 	public static DriveTrain getDriveTrain() {
 		return (drivetrain == null ? drivetrain = new DriveTrain() : drivetrain);
-
 	}
 
 	public static DriveTrain getDriveTrain(double RC) {
@@ -83,8 +84,8 @@ public class DriveTrain {
 			double RC) {
 		m_leftJaguar = leftJaguar;
 		m_rightJaguar = rightJaguar;
-		// m_leftLP = new LowPassFilter(RC);
-		// m_rightLP = new LowPassFilter(RC);
+		m_leftLP = new LowPassFilter(RC);
+		m_rightLP = new LowPassFilter(RC);
 	}
 
 	/**
@@ -94,8 +95,8 @@ public class DriveTrain {
 	 *            the RC value
 	 */
 	public void setRC(double RC) {
-		// m_leftLP.setRC(RC);
-		// m_rightLP.setRC(RC);
+		m_leftLP.setRC(RC);
+		m_rightLP.setRC(RC);
 	}
 
 	/**
@@ -104,8 +105,7 @@ public class DriveTrain {
 	 * @return The current RC value set.
 	 */
 	public double getRC() {
-		// return m_leftLP.getRC();
-		return -1D;
+		return m_leftLP.getRC();
 	}
 
 	/**
@@ -148,10 +148,9 @@ public class DriveTrain {
 	public void hardBreak() {
 		m_leftJaguar.set(0);
 		m_rightJaguar.set(0);
-		// m_leftLP.reset(); // TODO: This was not present during the
-		// competition.
-		// Is it required?
-		// m_rightLP.reset();
+		m_leftLP.reset(); // TODO: This was not present during the competition.
+							// Is it required?
+		m_rightLP.reset();
 	}
 
 	/**
@@ -166,8 +165,8 @@ public class DriveTrain {
 		leftSpeed *= m_leftLimit * -m_limit;
 		rightSpeed *= m_rightLimit * m_limit;
 
-		// leftSpeed = m_leftLP.calculate(leftSpeed);
-		// rightSpeed = m_rightLP.calculate(rightSpeed);
+		leftSpeed = m_leftLP.calculate(leftSpeed);
+		rightSpeed = m_rightLP.calculate(rightSpeed);
 
 		m_leftJaguar.set(leftSpeed);
 		m_rightJaguar.set(rightSpeed);

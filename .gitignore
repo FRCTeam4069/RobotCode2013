@@ -4,3 +4,7 @@
 *.jar
 *.war
 *.ear
+*.xml
+*.properties
+j2meproperties/
+build/
