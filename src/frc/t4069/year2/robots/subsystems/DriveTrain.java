@@ -17,7 +17,7 @@ import frc.t4069.year2.utils.math.LowPassFilter;
  * forward/reverse, and left joystick's x to be left and right. These values are
  * passed to arcadeDrive as the move and turn value respectively.
  * 
- * @author Mostly Shuhao
+ * @author Shuhao Wu, Edmund Noble
  */
 public class DriveTrain {
 

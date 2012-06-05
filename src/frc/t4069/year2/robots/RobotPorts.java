@@ -6,6 +6,9 @@ package frc.t4069.year2.robots;
  * @author Edmund
  */
 public class RobotPorts {
+	private RobotPorts() {
+	}
+
 	// PWM ports
 	public static final int RIGHT_MOTOR = 1;
 	public static final int LEFT_MOTOR = 2;
