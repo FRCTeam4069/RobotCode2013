@@ -2,7 +2,7 @@ package frc.t4069.year2.robots.subsystems;
 
 import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.SpeedController;
-import frc.t4069.year2.robots.RobotPorts;
+import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
 /**
@@ -17,7 +17,7 @@ import frc.t4069.year2.utils.math.LowPassFilter;
  * forward/reverse, and left joystick's x to be left and right. These values are
  * passed to arcadeDrive as the move and turn value respectively.
  * 
- * @author Shuhao Wu, Edmund Noble
+ * @author Mostly Shuhao
  */
 public class DriveTrain {
 
@@ -61,8 +61,8 @@ public class DriveTrain {
 	 *            The RC value used for the drive train.
 	 */
 	private DriveTrain(double RC) {
-		this(new Jaguar(RobotPorts.LEFT_MOTOR), new Jaguar(
-				RobotPorts.RIGHT_MOTOR), RC);
+		this(new Jaguar(Constants.LEFT_MOTOR), new Jaguar(
+				Constants.RIGHT_MOTOR), RC);
 	}
 
 	/**
