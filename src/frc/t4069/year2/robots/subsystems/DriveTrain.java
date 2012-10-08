@@ -1,8 +1,9 @@
 package frc.t4069.year2.robots.subsystems;
 
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.SpeedController;
-import frc.t4069.year2.robots.RobotPorts;
+import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
 /**
@@ -17,7 +18,7 @@ import frc.t4069.year2.utils.math.LowPassFilter;
  * forward/reverse, and left joystick's x to be left and right. These values are
  * passed to arcadeDrive as the move and turn value respectively.
  * 
- * @author Mostly Shuhao
+ * @author Shuhao Wu, Edmund Noble
  */
 public class DriveTrain {
 
@@ -27,6 +28,8 @@ public class DriveTrain {
 	private SpeedController m_rightJaguar;
 	private LowPassFilter m_leftLP;
 	private LowPassFilter m_rightLP;
+	private Encoder m_leftEnc;
+	private Encoder m_rightEnc;
 
 	private double m_limit = 1.0;
 	private double m_leftLimit = 1.0;
@@ -35,23 +38,29 @@ public class DriveTrain {
 	/**
 	 * Initializes a new drive object with the RC value of 250.
 	 */
-	private DriveTrain() {
-		this(250); // Good constant for this drive train
-	}
 
 	public static DriveTrain getDriveTrain() {
-		return (drivetrain == null ? drivetrain = new DriveTrain() : drivetrain);
+		return getDriveTrain(250);
 	}
 
 	public static DriveTrain getDriveTrain(double RC) {
-		return (drivetrain == null ? drivetrain = new DriveTrain(RC)
-				: drivetrain);
+		Encoder leftEncoder = new Encoder(Constants.LEFT_ENC_1,
+				Constants.LEFT_ENC_2);
+		Encoder rightEncoder = new Encoder(Constants.RIGHT_ENC_1,
+				Constants.RIGHT_ENC_2);
+		double distancePerPulse = Constants.PULSES_PER_REVOLUTION
+				/ Constants.WHEEL_CIRCUMFERENCE;
+		leftEncoder.setDistancePerPulse(distancePerPulse);
+		rightEncoder.setDistancePerPulse(distancePerPulse);
+		return getDriveTrain(new Jaguar(Constants.LEFT_MOTOR), new Jaguar(
+				Constants.RIGHT_MOTOR), leftEncoder, rightEncoder, RC);
 	}
 
 	public static DriveTrain getDriveTrain(SpeedController leftJaguar,
-			SpeedController rightJaguar, double RC) {
+			SpeedController rightJaguar, Encoder leftEncoder,
+			Encoder rightEncoder, double RC) {
 		return (drivetrain == null ? drivetrain = new DriveTrain(leftJaguar,
-				rightJaguar, RC) : drivetrain);
+				rightJaguar, leftEncoder, rightEncoder, RC) : drivetrain);
 	}
 
 	/**
@@ -60,10 +69,6 @@ public class DriveTrain {
 	 * @param RC
 	 *            The RC value used for the drive train.
 	 */
-	private DriveTrain(double RC) {
-		this(new Jaguar(RobotPorts.LEFT_MOTOR), new Jaguar(
-				RobotPorts.RIGHT_MOTOR), RC);
-	}
 
 	/**
 	 * Initializes a new drive train with all custom stuff. Recommend to use
@@ -81,11 +86,13 @@ public class DriveTrain {
 	 *            RC Constant for Low Pass Filter
 	 */
 	private DriveTrain(SpeedController leftJaguar, SpeedController rightJaguar,
-			double RC) {
+			Encoder leftEncoder, Encoder rightEncoder, double RC) {
 		m_leftJaguar = leftJaguar;
 		m_rightJaguar = rightJaguar;
 		m_leftLP = new LowPassFilter(RC);
 		m_rightLP = new LowPassFilter(RC);
+		m_leftEnc = leftEncoder;
+		m_rightEnc = rightEncoder;
 	}
 
 	/**
@@ -151,6 +158,35 @@ public class DriveTrain {
 		m_leftLP.reset(); // TODO: This was not present during the competition.
 							// Is it required?
 		m_rightLP.reset();
+	}
+
+	/**
+	 * Gets degrees turned. Returns negative degrees for left turns, 
+ 	* and positive for right.
+ 	*/
+	public double getTurnDegrees() {
+		double circumference = Math.PI * 2 * Constants.DIST_BETWEEN_WHEELS;
+		double leftDist = m_leftEnc.getDistance();
+		double rightDist = m_rightEnc.getDistance();
+		double angle = 360 * ((rightDist - leftDist)) / circumference;
+		resetEncoders();
+		return angle % 360;
+	}
+
+	private void resetEncoders() {
+		m_rightEnc.reset();
+		m_leftEnc.reset();
+	}
+
+	/**
+	 * Gets distance traveled since last reset.
+	 * This method will return an incorrect value if any turning has taken place
+	 * since the last reset.
+	 */
+	public double getDistance() {
+		double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
+		resetEncoders();
+		return value;
 	}
 
 	/**
