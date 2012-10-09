@@ -5,6 +5,7 @@ import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
+import static java.lang.Math.PI;
 
 /**
  * RobotDrive is obviously too complicated, amirite? This class includes a low
@@ -161,16 +162,16 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Gets degrees turned. Returns negative degrees for left turns, 
- 	* and positive for right.
- 	*/
+	 * Gets degrees turned. Returns negative degrees for left turns, and
+	 * positive for right.
+	 */
+	
 	public double getTurnDegrees() {
-		double circumference = Math.PI * 2 * Constants.DIST_BETWEEN_WHEELS;
+		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * PI;
 		double leftDist = m_leftEnc.getDistance();
 		double rightDist = m_rightEnc.getDistance();
-		double angle = 360 * ((rightDist - leftDist)) / circumference;
-		resetEncoders();
-		return angle % 360;
+		double angle = ((rightDist - leftDist) * 360 / circumference) / (180 * PI);
+		return angle;
 	}
 
 	private void resetEncoders() {
@@ -179,9 +180,8 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Gets distance traveled since last reset.
-	 * This method will return an incorrect value if any turning has taken place
-	 * since the last reset.
+	 * Gets distance traveled since last reset. This method will return an
+	 * incorrect value if any turning has taken place since the last reset.
 	 */
 	public double getDistance() {
 		double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
