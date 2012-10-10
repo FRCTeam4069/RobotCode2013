@@ -166,12 +166,16 @@ public class DriveTrain {
 	 * positive for right.
 	 */
 	
-	public double getTurnDegrees() {
+	public double getTurnedDegrees() {
 		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * PI;
 		double leftDist = m_leftEnc.getDistance();
 		double rightDist = m_rightEnc.getDistance();
-		double angle = ((rightDist - leftDist) * 360 / circumference) / (180 * PI);
-		return angle;
+		double angle = ((rightDist - leftDist) * 360 / circumference);
+		return angle % 360;
+	}
+	
+	public double getTurnedRadians() {
+		return (getTurnedDegrees() / (180 * PI));
 	}
 
 	private void resetEncoders() {
