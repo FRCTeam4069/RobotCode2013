@@ -12,8 +12,8 @@ public class Constants {
 	/*
 	 * PHYSICAL SECTION
 	 */
-	public static final double DIST_BETWEEN_WHEELS = 28;
-	public static final double WHEEL_CIRCUMFERENCE = 9.8;
+	public static final double DIST_BETWEEN_WHEELS = 52.705;
+	public static final double WHEEL_CIRCUMFERENCE = Math.PI * 17.78;
 
 	/*
 	 * ELECTRICAL SECTION
