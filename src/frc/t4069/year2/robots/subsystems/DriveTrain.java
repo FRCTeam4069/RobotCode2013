@@ -1,7 +1,6 @@
+
 package frc.t4069.year2.robots.subsystems;
 
-import edu.wpi.first.wpilibj.Jaguar;
-import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
@@ -21,8 +20,6 @@ import frc.t4069.year2.utils.math.LowPassFilter;
  */
 public class DriveTrain {
 
-	private static DriveTrain drivetrain;
-
 	private SpeedController m_leftJaguar;
 	private SpeedController m_rightJaguar;
 	private LowPassFilter m_leftLP;
@@ -35,23 +32,8 @@ public class DriveTrain {
 	/**
 	 * Initializes a new drive object with the RC value of 250.
 	 */
-	private DriveTrain() {
+	public DriveTrain() {
 		this(250); // Good constant for this drive train
-	}
-
-	public static DriveTrain getDriveTrain() {
-		return (drivetrain == null ? drivetrain = new DriveTrain() : drivetrain);
-	}
-
-	public static DriveTrain getDriveTrain(double RC) {
-		return (drivetrain == null ? drivetrain = new DriveTrain(RC)
-				: drivetrain);
-	}
-
-	public static DriveTrain getDriveTrain(SpeedController leftJaguar,
-			SpeedController rightJaguar, double RC) {
-		return (drivetrain == null ? drivetrain = new DriveTrain(leftJaguar,
-				rightJaguar, RC) : drivetrain);
 	}
 
 	/**
@@ -60,7 +42,7 @@ public class DriveTrain {
 	 * @param RC
 	 *            The RC value used for the drive train.
 	 */
-	private DriveTrain(double RC) {
+	public DriveTrain(double RC) {
 		this(new Jaguar(Constants.LEFT_MOTOR), new Jaguar(
 				Constants.RIGHT_MOTOR), RC);
 	}
@@ -80,8 +62,8 @@ public class DriveTrain {
 	 * @param RC
 	 *            RC Constant for Low Pass Filter
 	 */
-	private DriveTrain(SpeedController leftJaguar, SpeedController rightJaguar,
-			double RC) {
+	public DriveTrain(SpeedController leftJaguar,
+			SpeedController rightJaguar, double RC) {
 		m_leftJaguar = leftJaguar;
 		m_rightJaguar = rightJaguar;
 		m_leftLP = new LowPassFilter(RC);
@@ -89,14 +71,41 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Sets a RC value. Used when tuning with the analog controls.
+	 * Arcade drive. It calculates the left and right speed.
 	 * 
-	 * @param RC
-	 *            the RC value
+	 * @param moveValue
+	 *            Value between -1 - 1
+	 * @param rotateValue
+	 *            Value between -1 - 1
 	 */
-	public void setRC(double RC) {
-		m_leftLP.setRC(RC);
-		m_rightLP.setRC(RC);
+	public void arcadeDrive(double moveValue, double rotateValue) {
+		double leftMotorSpeed;
+		double rightMotorSpeed;
+		moveValue =
+				(moveValue < 0 ? -(moveValue * moveValue)
+						: (moveValue * moveValue));
+		rotateValue =
+				(rotateValue < 0 ? -(rotateValue * rotateValue)
+						: (rotateValue * rotateValue));
+		if (moveValue > 0.0) {
+			if (rotateValue > 0.0) {
+				leftMotorSpeed = moveValue - rotateValue;
+				rightMotorSpeed = Math.max(moveValue, rotateValue);
+			}
+			else {
+				leftMotorSpeed = Math.max(moveValue, -rotateValue);
+				rightMotorSpeed = moveValue + rotateValue;
+			}
+		}
+		else if (rotateValue > 0.0) {
+			leftMotorSpeed = -Math.max(-moveValue, rotateValue);
+			rightMotorSpeed = moveValue + rotateValue;
+		}
+		else {
+			leftMotorSpeed = moveValue - rotateValue;
+			rightMotorSpeed = -Math.max(-moveValue, -rotateValue);
+		}
+		tankDrive(leftMotorSpeed, rightMotorSpeed);
 	}
 
 	/**
@@ -109,14 +118,15 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Limit the max speed. Used for precision mode. You can also use this to
-	 * reverse directions (negatives)
-	 * 
-	 * @param limit
-	 *            A double between -1 - 1, as a percentage
+	 * Stops robot by setting the speed of the controller to 0 (remember that
+	 * the Jag should be on brake mode)
 	 */
-	public void limitSpeed(double limit) {
-		m_limit = limit;
+	public void hardBreak() {
+		m_leftJaguar.set(0);
+		m_rightJaguar.set(0);
+		m_leftLP.reset(); // TODO: This was not present during the competition.
+							// Is it required?
+		m_rightLP.reset();
 	}
 
 	/**
@@ -142,15 +152,25 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Stops robot by setting the speed of the controller to 0 (remember that
-	 * the Jag should be on brake mode)
+	 * Limit the max speed. Used for precision mode. You can also use this to
+	 * reverse directions (negatives)
+	 * 
+	 * @param limit
+	 *            A double between -1 - 1, as a percentage
 	 */
-	public void hardBreak() {
-		m_leftJaguar.set(0);
-		m_rightJaguar.set(0);
-		m_leftLP.reset(); // TODO: This was not present during the competition.
-							// Is it required?
-		m_rightLP.reset();
+	public void limitSpeed(double limit) {
+		m_limit = limit;
+	}
+
+	/**
+	 * Sets a RC value. Used when tuning with the analog controls.
+	 * 
+	 * @param RC
+	 *            the RC value
+	 */
+	public void setRC(double RC) {
+		m_leftLP.setRC(RC);
+		m_rightLP.setRC(RC);
 	}
 
 	/**
@@ -170,38 +190,5 @@ public class DriveTrain {
 
 		m_leftJaguar.set(leftSpeed);
 		m_rightJaguar.set(rightSpeed);
-	}
-
-	/**
-	 * Arcade drive. It calculates the left and right speed.
-	 * 
-	 * @param moveValue
-	 *            Value between -1 - 1
-	 * @param rotateValue
-	 *            Value between -1 - 1
-	 */
-	public void arcadeDrive(double moveValue, double rotateValue) {
-		double leftMotorSpeed;
-		double rightMotorSpeed;
-		moveValue = (moveValue < 0 ? -(moveValue * moveValue)
-				: (moveValue * moveValue));
-		rotateValue = (rotateValue < 0 ? -(rotateValue * rotateValue)
-				: (rotateValue * rotateValue));
-		if (moveValue > 0.0) {
-			if (rotateValue > 0.0) {
-				leftMotorSpeed = moveValue - rotateValue;
-				rightMotorSpeed = Math.max(moveValue, rotateValue);
-			} else {
-				leftMotorSpeed = Math.max(moveValue, -rotateValue);
-				rightMotorSpeed = moveValue + rotateValue;
-			}
-		} else if (rotateValue > 0.0) {
-			leftMotorSpeed = -Math.max(-moveValue, rotateValue);
-			rightMotorSpeed = moveValue + rotateValue;
-		} else {
-			leftMotorSpeed = moveValue - rotateValue;
-			rightMotorSpeed = -Math.max(-moveValue, -rotateValue);
-		}
-		tankDrive(leftMotorSpeed, rightMotorSpeed);
 	}
 }
