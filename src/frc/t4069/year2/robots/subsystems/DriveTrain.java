@@ -1,6 +1,10 @@
 
 package frc.t4069.year2.robots.subsystems;
 
+import static java.lang.Math.PI;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Jaguar;
+import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
@@ -24,6 +28,8 @@ public class DriveTrain {
 	private SpeedController m_rightJaguar;
 	private LowPassFilter m_leftLP;
 	private LowPassFilter m_rightLP;
+	private Encoder m_leftEnc;
+	private Encoder m_rightEnc;
 
 	private double m_limit = 1.0;
 	private double m_leftLimit = 1.0;
@@ -42,6 +48,7 @@ public class DriveTrain {
 	 * @param RC
 	 *            The RC value used for the drive train.
 	 */
+
 	public DriveTrain(double RC) {
 		this(new Jaguar(Constants.LEFT_MOTOR), new Jaguar(
 				Constants.RIGHT_MOTOR), RC);
@@ -62,10 +69,20 @@ public class DriveTrain {
 	 * @param RC
 	 *            RC Constant for Low Pass Filter
 	 */
+
 	public DriveTrain(SpeedController leftJaguar,
 			SpeedController rightJaguar, double RC) {
+		this(leftJaguar, rightJaguar, new Encoder(1, 2),
+				new Encoder(3, 4), RC);
+	}
+
+	public DriveTrain(SpeedController leftJaguar,
+			SpeedController rightJaguar, Encoder leftEncoder,
+			Encoder rightEncoder, double RC) {
 		m_leftJaguar = leftJaguar;
 		m_rightJaguar = rightJaguar;
+		m_leftEnc = leftEncoder;
+		m_rightEnc = rightEncoder;
 		m_leftLP = new LowPassFilter(RC);
 		m_rightLP = new LowPassFilter(RC);
 	}
@@ -109,12 +126,40 @@ public class DriveTrain {
 	}
 
 	/**
+	 * Gets distance traveled since last reset. This method will return an
+	 * incorrect value if any turning has taken place since the last reset.
+	 */
+	public double getDistance() {
+		double value =
+				(m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
+		resetEncoders();
+		return value;
+	}
+
+	/**
 	 * Gets the current RC value;
 	 * 
 	 * @return The current RC value set.
 	 */
 	public double getRC() {
 		return m_leftLP.getRC();
+	}
+
+	/**
+	 * Gets degrees turned. Returns negative degrees for left turns, and
+	 * positive for right.
+	 */
+
+	public double getTurnedDegrees() {
+		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * PI;
+		double leftDist = m_leftEnc.getDistance();
+		double rightDist = m_rightEnc.getDistance();
+		double angle = ((rightDist - leftDist) * 360 / circumference);
+		return angle % 360;
+	}
+
+	public double getTurnedRadians() {
+		return (getTurnedDegrees() / (180 * PI));
 	}
 
 	/**
@@ -160,6 +205,11 @@ public class DriveTrain {
 	 */
 	public void limitSpeed(double limit) {
 		m_limit = limit;
+	}
+
+	private void resetEncoders() {
+		m_rightEnc.reset();
+		m_leftEnc.reset();
 	}
 
 	/**
