@@ -1,9 +1,14 @@
-
 package frc.t4069.year2.robots.subsystems;
 
-import static java.lang.Math.PI;
+import java.util.Date;
+
+import com.sun.squawk.util.MathUtils;
+
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Jaguar;
+import edu.wpi.first.wpilibj.PIDController;
+import edu.wpi.first.wpilibj.PIDOutput;
+import edu.wpi.first.wpilibj.PIDSource;
 import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
@@ -12,75 +17,85 @@ import frc.t4069.year2.utils.math.LowPassFilter;
  * RobotDrive is obviously too complicated, amirite? This class includes a low
  * pass filter.
  * 
- * Recommended setup is tank drive based robot, with 2 or 4 Jaguars (not
- * victors). If 4 jags are used, use a PWM splitter to split the PWM signal.
- * Jaguars should be on brake mode.
+ * Recommended setup is tank drive based robot, with 2 or 4 Jaguars (or Talons,
+ * not victors). If 4 controllers are used, use a PWM splitter to split the PWM
+ * signal. Controllers should be on brake mode.
  * 
- * Controller (Logitech Game Controller) should be mapped to trigger to be
- * forward/reverse, and left joystick's x to be left and right. These values are
- * passed to arcadeDrive as the move and turn value respectively.
+ * Game controller (Logitech) should be mapped to trigger to be forward/reverse,
+ * and left joystick's x to be left and right. These values are passed to
+ * arcadeDrive as the move and turn value respectively.
  * 
  * @author Mostly Shuhao
  */
 public class DriveTrain {
 
-	private SpeedController m_leftJaguar;
-	private SpeedController m_rightJaguar;
+	private SpeedController m_leftESC;
+	private SpeedController m_rightESC;
 	private LowPassFilter m_leftLP;
 	private LowPassFilter m_rightLP;
 	private Encoder m_leftEnc;
 	private Encoder m_rightEnc;
-
+	private static final double MAX_SPEED = 657.14285714285714285714285714286;
 	private double m_limit = 1.0;
-	private double m_leftLimit = 1.0;
+	private double m_leftLimit = 0.95;
 	private double m_rightLimit = 1.0;
 
 	/**
 	 * Initializes a new drive object with the RC value of 250.
 	 */
 	public DriveTrain() {
-		this(250); // Good constant for this drive train
+		this(100); // Good constant for this drive train
 	}
 
 	/**
-	 * Initializes a new drive object with a custom RC value.
+	 * Initializes a new drive object with a custom RC value, using Jaguars.
 	 * 
 	 * @param RC
 	 *            The RC value used for the drive train.
 	 */
 
 	public DriveTrain(double RC) {
-		this(new Jaguar(Constants.LEFT_MOTOR), new Jaguar(
-				Constants.RIGHT_MOTOR), RC);
+		this(new Jaguar(Constants.LEFT_MOTOR),
+				new Jaguar(Constants.RIGHT_MOTOR), RC);
 	}
 
 	/**
-	 * Initializes a new drive train with all custom stuff. Recommend to use
-	 * Jaguars as oppose to Victors. Victors didn't seem to like the Low Pass
-	 * Filter as much...
-	 * 
-	 * If there's 4 motors, use a PWM splitter, if you need to control all 4
+	 * Initializes a new drive train with all custom stuff. Talons are
+	 * recommended above Jaguars, and Victors cannot be used as the low-pass
+	 * filter doesn't work with their low response time and non-linearity. If
+	 * there's 4 motors, use a PWM splitter. If you need to control all 4
 	 * separately, this class is not for you.
 	 * 
-	 * @param leftJaguar
-	 *            Left Jaguar/SpeedController object
-	 * @param rightJaguar
-	 *            Right Jaguar/SpeedController object
+	 * @param leftESC
+	 *            Left SpeedController object
+	 * @param rightESC
+	 *            Right SpeedController object
 	 * @param RC
 	 *            RC Constant for Low Pass Filter
 	 */
 
-	public DriveTrain(SpeedController leftJaguar,
-			SpeedController rightJaguar, double RC) {
-		this(leftJaguar, rightJaguar, new Encoder(1, 2),
-				new Encoder(3, 4), RC);
+	public DriveTrain(SpeedController leftESC, SpeedController rightESC,
+			double RC) {
+		this(leftESC, rightESC, null, null,// new Encoder(Constants.LEFT_ENC_1,
+											// Constants.LEFT_ENC_2), new
+											// Encoder(Constants.RIGHT_ENC_1,
+											// Constants.RIGHT_ENC_2),
+				RC);
 	}
 
-	public DriveTrain(SpeedController leftJaguar,
-			SpeedController rightJaguar, Encoder leftEncoder,
-			Encoder rightEncoder, double RC) {
-		m_leftJaguar = leftJaguar;
-		m_rightJaguar = rightJaguar;
+	class EncoderOutput implements PIDOutput {
+		public double value = 0;
+
+		public void pidWrite(double output) {
+			value = output;
+
+		}
+	}
+
+	public DriveTrain(SpeedController leftESC, SpeedController rightESC,
+			Encoder leftEncoder, Encoder rightEncoder, double RC) {
+		m_leftESC = leftESC;
+		m_rightESC = rightESC;
 		m_leftEnc = leftEncoder;
 		m_rightEnc = rightEncoder;
 		m_leftLP = new LowPassFilter(RC);
@@ -88,7 +103,7 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Arcade drive. It calculates the left and right speed.
+	 * Mathematical arcade drive. It calculates the left and right speed.
 	 * 
 	 * @param moveValue
 	 *            Value between -1 - 1
@@ -98,40 +113,19 @@ public class DriveTrain {
 	public void arcadeDrive(double moveValue, double rotateValue) {
 		double leftMotorSpeed;
 		double rightMotorSpeed;
-		moveValue =
-				(moveValue < 0 ? -(moveValue * moveValue)
-						: (moveValue * moveValue));
-		rotateValue =
-				(rotateValue < 0 ? -(rotateValue * rotateValue)
-						: (rotateValue * rotateValue));
-		if (moveValue > 0.0) {
-			if (rotateValue > 0.0) {
-				leftMotorSpeed = moveValue - rotateValue;
-				rightMotorSpeed = Math.max(moveValue, rotateValue);
-			}
-			else {
-				leftMotorSpeed = Math.max(moveValue, -rotateValue);
-				rightMotorSpeed = moveValue + rotateValue;
-			}
-		}
-		else if (rotateValue > 0.0) {
-			leftMotorSpeed = -Math.max(-moveValue, rotateValue);
-			rightMotorSpeed = moveValue + rotateValue;
-		}
-		else {
-			leftMotorSpeed = moveValue - rotateValue;
-			rightMotorSpeed = -Math.max(-moveValue, -rotateValue);
-		}
+		double theta = MathUtils.atan2(moveValue, rotateValue);
+		double r = Math.sqrt((moveValue * moveValue) + (rotateValue * rotateValue));
+		leftMotorSpeed = (Math.sin(theta) + Math.cos(theta)) * r;
+		rightMotorSpeed = (Math.sin(theta) - Math.cos(theta)) * r;
 		tankDrive(leftMotorSpeed, rightMotorSpeed);
 	}
 
 	/**
-	 * Gets distance traveled since last reset. This method will return an
-	 * incorrect value if any turning has taken place since the last reset.
+	 * Gets distance traveled since last reset. Will return an incorrect value
+	 * if any turning has taken place s'ince the last reset.
 	 */
 	public double getDistance() {
-		double value =
-				(m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
+		double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
 		resetEncoders();
 		return value;
 	}
@@ -146,32 +140,30 @@ public class DriveTrain {
 	}
 
 	/**
-	 * Gets degrees turned. Returns negative degrees for left turns, and
-	 * positive for right.
+	 * Gets angle turned.
+	 * 
+	 * @param degrees
+	 *            If true, returns angle in degrees. Otherwise, returns radians.
 	 */
 
-	public double getTurnedDegrees() {
-		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * PI;
+	public double getTurnedAngle(boolean degrees) {
+		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * Math.PI;
 		double leftDist = m_leftEnc.getDistance();
 		double rightDist = m_rightEnc.getDistance();
-		double angle = ((rightDist - leftDist) * 360 / circumference);
-		return angle % 360;
-	}
-
-	public double getTurnedRadians() {
-		return (getTurnedDegrees() / (180 * PI));
+		double arc = rightDist - leftDist;
+		if (degrees) {
+			return (arc / circumference) * 360;
+		}
+		return arc / Constants.DIST_BETWEEN_WHEELS;
 	}
 
 	/**
 	 * Stops robot by setting the speed of the controller to 0 (remember that
-	 * the Jag should be on brake mode)
+	 * the ESC should be on brake mode)
 	 */
 	public void hardBreak() {
-		m_leftJaguar.set(0);
-		m_rightJaguar.set(0);
-		m_leftLP.reset(); // TODO: This was not present during the competition.
-							// Is it required?
-		m_rightLP.reset();
+		m_leftESC.set(0);
+		m_rightESC.set(0);
 	}
 
 	/**
@@ -231,14 +223,14 @@ public class DriveTrain {
 	 * @param rightSpeed
 	 *            Right speed between -1 - 1
 	 */
+
 	public void tankDrive(double leftSpeed, double rightSpeed) {
 		leftSpeed *= m_leftLimit * -m_limit;
 		rightSpeed *= m_rightLimit * m_limit;
-
 		leftSpeed = m_leftLP.calculate(leftSpeed);
 		rightSpeed = m_rightLP.calculate(rightSpeed);
-
-		m_leftJaguar.set(leftSpeed);
-		m_rightJaguar.set(rightSpeed);
+		m_leftESC.set(leftSpeed);
+		m_rightESC.set(rightSpeed);
 	}
+
 }
