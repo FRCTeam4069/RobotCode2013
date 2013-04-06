@@ -1,31 +1,67 @@
 package frc.t4069.year2.robots.subsystems;
 
 import java.util.Date;
+
+import com.sun.squawk.debugger.Log;
+
 import edu.wpi.first.wpilibj.*;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.Potentiometer;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
 public class Shooter {
-	class AngleOutput implements PIDOutput {
+	class Output implements PIDOutput {
 		public double value = 0;
 
-		@Override
 		public void pidWrite(double output) {
 			value = output;
 		}
+	}
 
+	class RPMEncoder implements PIDSource {
+		private Encoder m_encoder;
+		private long lastTime = -1337;
+		private int lastValue = 0;
+		private double currentValue = 0.0;
+
+		private LowPassFilter m_lpf = new LowPassFilter(25);
+
+		public RPMEncoder(Encoder encoder) {
+			m_encoder = encoder;
+		}
+
+		public double pidGet() {
+			if (lastTime == -1337) {
+				lastTime = new Date().getTime();
+				lastValue = 0;
+				return 0;
+			}
+			long ct = new Date().getTime();
+			double deltaTime = ct - lastTime;
+			lastTime = ct;
+			int thisValue = m_encoder.get();
+			int deltaValue = thisValue - lastValue;
+			lastValue = thisValue;
+			if (lastValue > 2000000000) {
+				m_encoder.reset();
+				lastValue = 0;
+			}
+			double rev = deltaValue / 30.0;
+			rev = rev / (deltaTime / 60000.0);// / MAX_SPEED;
+			//Log.log("RPM: " + rev);
+			currentValue = m_lpf.calculate(rev);
+			return currentValue;
+		}
 	}
 
 	class AnglePotentiometer implements PIDSource {
 		private Potentiometer m_potentiometer;
-		private LowPassFilter m_lpf = new LowPassFilter(25);
+		private LowPassFilter m_lpf = new LowPassFilter(5);
 
 		public AnglePotentiometer(Potentiometer pot) {
 			m_potentiometer = pot;
 		}
 
-		@Override
 		public double pidGet() {
 			return m_lpf.calculate(m_potentiometer.getAngle(true));
 		}
@@ -39,27 +75,32 @@ public class Shooter {
 	protected DoubleSolenoid m_Reloader;
 	protected Compressor m_Compressor;
 	protected Potentiometer m_TurningPot, m_RisingPot;
-	private PIDController m_turnpc;
-	private PIDController m_inclinepc;
+	protected Encoder m_BackEncoder, m_FrontEncoder;
+	private PIDController m_turnPC;
+	private PIDController m_inclinePC;
+	private PIDController m_FrontShootPC;
+	private PIDSource m_FrontShootPIDSource;
+	private PIDOutput m_FrontShootPIDOutput;
 	private PIDSource m_inclinepidsource;
 	private PIDOutput m_inclinepidoutput;
-	private double inclined = 0.06, inclinei = 0.01, inclinep = 0.24;
-	private double turnd = 0.06, turni = 0.01, turnp = 0.24;
-	private PIDSource m_turnpidsource;
-	private PIDOutput m_turnpidoutput;
+
+	private double inclined = 0,//0.0005, 
+			inclinei = 0.005, inclinep = 0.229;
+	private static final double MAX_BACK_SPEED = 1800;
+	private static final double MAX_FRONT_SPEED = 1600;
 
 	private LowPassFilter m_InclineLPF = new LowPassFilter(50);
 
 	private LowPassFilter m_TurnLPF = new LowPassFilter(10);
 
 	public Shooter() {
-		this(150);
+		this(90);
 	}
 
 	public Shooter(double RC) {
 		this(new Jaguar(Constants.FRONT_SHOOTER), new Jaguar(
 				Constants.BACK_SHOOTER), new Jaguar(Constants.INCLINER_VFD),
-				new Jaguar(Constants.TURN_VFD), new DoubleSolenoid(
+				new Victor(Constants.TURN_VFD), new DoubleSolenoid(
 						Constants.RELOADER_SOLENOID_FORWARD,
 						Constants.RELOADER_SOLENOID_BACKWARD), new Compressor(
 						Constants.PRESSURE_SWITCH, Constants.COMPRESSOR),
@@ -68,7 +109,7 @@ public class Shooter {
 
 	/**
 	 * Creates a new Shooter object. Note: The use of Talons for shooter control
-	 * is recommended.
+	 * is recommended. Seriously, don`t use Victors. Ever.
 	 */
 	public Shooter(SpeedController escFront, SpeedController escBack,
 			SpeedController incliner, SpeedController turner,
@@ -80,22 +121,16 @@ public class Shooter {
 		m_Compressor = compressor;
 		m_Incliner = incliner;
 		m_Turret = turner;
-		m_TurningPot = new Potentiometer(turnPot, -180, 72);
-		m_RisingPot = new Potentiometer(risePot, -263.150, 92.0444649);
-		m_turnpidsource = new AnglePotentiometer(m_TurningPot);
-		m_turnpidoutput = new AngleOutput();
+		m_TurningPot = new Potentiometer(turnPot, -180, 72); // magic
+		m_RisingPot = new Potentiometer(risePot, -263.150, 92.0444649); // is friendship
 		m_inclinepidsource = new AnglePotentiometer(m_RisingPot);
-		m_inclinepidoutput = new AngleOutput();
-		m_backLPF = new LowPassFilter(RC);
-		m_frontLPF = new LowPassFilter(RC);
-		m_turnpc = new PIDController(turnp, turni, turnd, m_turnpidsource,
-				m_turnpidoutput);
-		m_turnpc.setTolerance(1.5);
-		m_turnpc.setOutputRange(-1, 1);
-		m_inclinepc = new PIDController(inclinep, inclinei, inclined,
+		m_inclinepidoutput = new Output();
+		m_inclinePC = new PIDController(inclinep, inclinei, inclined,
 				m_inclinepidsource, m_inclinepidoutput);
-		m_inclinepc.setOutputRange(-1, 1);
-		m_inclinepc.setTolerance(1.5);
+		m_inclinePC.setOutputRange(-0.55
+				, 0.55);
+		//m_inclinePC.setTolerance(1.5);
+		m_inclinePC.setTolerance(5);
 		m_Compressor.start();
 	}
 
@@ -117,6 +152,15 @@ public class Shooter {
 	public boolean getPressureSwitch() {
 		return m_Compressor.getPressureSwitchValue();
 	}
+	
+	public void inclineChecked(double speed) {
+		//Log.log("Speed: " + speed);
+		if (m_RisingPot.getAngle(true) <= 10){
+			if (speed> 0) {m_Incliner.set(0);return;}
+		}
+			if (m_RisingPot.getAngle(true) >= 39) {if (speed < 0){m_Incliner.set(0); return;}}
+		m_Incliner.set(speed);
+	}
 
 	public double getTurn() {
 		return m_TurningPot.getAngle(true);
@@ -127,22 +171,24 @@ public class Shooter {
 	}
 
 	public void incline(double speed) {
-		m_Incliner.set(m_InclineLPF.calculate(speed * 0.2));
+		inclineChecked(-m_InclineLPF.calculate(speed * 0.2));
+
 	}
 
 	public void incline(double angle, boolean degrees) {
 		if (Math.abs(1 - angle / m_RisingPot.getAngle(degrees)) < 0.05) {
-			m_inclinepc.disable();
+			m_inclinePC.disable();
 			return;
 		}
-
 	}
 
-	public void inclinePID() {
-		if (!m_inclinepc.isEnable()) {
-			m_inclinepc.enable();
+	public void inclinePID(double target) {
+		if (!m_inclinePC.isEnable()) {
+			m_inclinePC.enable();
 		}
-		m_Incliner.set(m_inclinepc.get());
+		m_inclinePC.setSetpoint(target);
+		Log.log("Error: " + m_inclinePC.getError());
+		inclineChecked(-m_inclinePC.get());
 	}
 
 	public void load() {
@@ -154,13 +200,14 @@ public class Shooter {
 	}
 
 	public void setInclineTarget(double angle) {
-		m_inclinepc.setSetpoint(angle);
-		if (!m_inclinepc.isEnable())
-			m_inclinepc.enable();
+		m_inclinePC.setSetpoint(angle);
+		if (!m_inclinePC.isEnable())
+			m_inclinePC.enable();
 	}
-
+public boolean fastMode = false;
 	public void shoot() {
-		shoot(1, 1);
+		if (!fastMode) shoot(0.80, 0.85);
+		else shoot(0.9,1);
 	}
 
 	public void stop() {
@@ -168,12 +215,12 @@ public class Shooter {
 	}
 
 	public void disableInclinePID() {
-		m_inclinepc.disable();
+		m_inclinePC.disable();
 	}
 
 	public void shoot(double backSpeed, double frontSpeed) {
-		m_VFDBack.set(-m_backLPF.calculate(backSpeed));
-		m_VFDFront.set(-m_frontLPF.calculate(frontSpeed));
+		m_VFDBack.set(-backSpeed);
+		m_VFDFront.set(-frontSpeed);
 	}
 
 	public void turn(double speed) {

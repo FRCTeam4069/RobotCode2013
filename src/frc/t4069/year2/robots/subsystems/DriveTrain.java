@@ -2,13 +2,11 @@ package frc.t4069.year2.robots.subsystems;
 
 import java.util.Date;
 
+import com.sun.squawk.debugger.Log;
 import com.sun.squawk.util.MathUtils;
 
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Jaguar;
-import edu.wpi.first.wpilibj.PIDController;
-import edu.wpi.first.wpilibj.PIDOutput;
-import edu.wpi.first.wpilibj.PIDSource;
 import edu.wpi.first.wpilibj.SpeedController;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
@@ -33,9 +31,6 @@ public class DriveTrain {
 	private SpeedController m_rightESC;
 	private LowPassFilter m_leftLP;
 	private LowPassFilter m_rightLP;
-	private Encoder m_leftEnc;
-	private Encoder m_rightEnc;
-	private static final double MAX_SPEED = 657.14285714285714285714285714286;
 	private double m_limit = 1.0;
 	private double m_leftLimit = 0.95;
 	private double m_rightLimit = 1.0;
@@ -74,30 +69,10 @@ public class DriveTrain {
 	 *            RC Constant for Low Pass Filter
 	 */
 
-	public DriveTrain(SpeedController leftESC, SpeedController rightESC,
-			double RC) {
-		this(leftESC, rightESC, null, null,// new Encoder(Constants.LEFT_ENC_1,
-											// Constants.LEFT_ENC_2), new
-											// Encoder(Constants.RIGHT_ENC_1,
-											// Constants.RIGHT_ENC_2),
-				RC);
-	}
 
-	class EncoderOutput implements PIDOutput {
-		public double value = 0;
-
-		public void pidWrite(double output) {
-			value = output;
-
-		}
-	}
-
-	public DriveTrain(SpeedController leftESC, SpeedController rightESC,
-			Encoder leftEncoder, Encoder rightEncoder, double RC) {
+	public DriveTrain(SpeedController leftESC, SpeedController rightESC, double RC) {
 		m_leftESC = leftESC;
 		m_rightESC = rightESC;
-		m_leftEnc = leftEncoder;
-		m_rightEnc = rightEncoder;
 		m_leftLP = new LowPassFilter(RC);
 		m_rightLP = new LowPassFilter(RC);
 	}
@@ -115,8 +90,11 @@ public class DriveTrain {
 		double rightMotorSpeed;
 		double theta = MathUtils.atan2(moveValue, rotateValue);
 		double r = Math.sqrt((moveValue * moveValue) + (rotateValue * rotateValue));
-		leftMotorSpeed = (Math.sin(theta) + Math.cos(theta)) * r;
-		rightMotorSpeed = (Math.sin(theta) - Math.cos(theta)) * r;
+		double sinTheta = Math.sin(theta);
+		double cosTheta = Math.cos(theta);
+		leftMotorSpeed = (sinTheta + cosTheta) * r;
+		rightMotorSpeed = (sinTheta - cosTheta) * r;
+		//Log.log("Left: " + leftMotorSpeed + " Right: " + rightMotorSpeed);
 		tankDrive(leftMotorSpeed, rightMotorSpeed);
 	}
 
@@ -125,9 +103,10 @@ public class DriveTrain {
 	 * if any turning has taken place s'ince the last reset.
 	 */
 	public double getDistance() {
-		double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
-		resetEncoders();
-		return value;
+		//double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
+	//	resetEncoders();
+	//	return value;
+		return Double.NEGATIVE_INFINITY;
 	}
 
 	/**
@@ -147,7 +126,7 @@ public class DriveTrain {
 	 */
 
 	public double getTurnedAngle(boolean degrees) {
-		double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * Math.PI;
+		/*double circumference = 2 * Constants.DIST_BETWEEN_WHEELS * Math.PI;
 		double leftDist = m_leftEnc.getDistance();
 		double rightDist = m_rightEnc.getDistance();
 		double arc = rightDist - leftDist;
@@ -155,7 +134,7 @@ public class DriveTrain {
 			return (arc / circumference) * 360;
 		}
 		return arc / Constants.DIST_BETWEEN_WHEELS;
-	}
+	*/return Double.NEGATIVE_INFINITY;}
 
 	/**
 	 * Stops robot by setting the speed of the controller to 0 (remember that
@@ -200,8 +179,8 @@ public class DriveTrain {
 	}
 
 	private void resetEncoders() {
-		m_rightEnc.reset();
-		m_leftEnc.reset();
+		//m_rightEnc.reset();
+	//	m_leftEnc.reset();
 	}
 
 	/**

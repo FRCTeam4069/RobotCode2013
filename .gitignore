@@ -8,3 +8,5 @@
 *.properties
 j2meproperties/
 build/
+suite/
+.classpath
