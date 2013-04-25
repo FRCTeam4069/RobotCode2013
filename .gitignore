@@ -1,12 +1,6 @@
 *.class
-
-# Package Files #
-*.jar
-*.war
-*.ear
-*.xml
-*.properties
-j2meproperties/
+*.java~
 build/
+j2meclasses/
 suite/
-.classpath
+src/frc/t4069/year2/robots/Version.java

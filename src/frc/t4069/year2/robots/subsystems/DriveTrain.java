@@ -39,7 +39,7 @@ public class DriveTrain {
 	 * Initializes a new drive object with the RC value of 250.
 	 */
 	public DriveTrain() {
-		this(100); // Good constant for this drive train
+		this(30); // Good constant for this drive train
 	}
 
 	/**

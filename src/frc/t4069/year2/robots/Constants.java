@@ -48,7 +48,8 @@ public class Constants {
 	public static final int COMPRESSOR = 1;
 
 	public static final int[] BAD_PORTS = {};
-
+        public static final int WINCH_CONTROLLER = 5;
+    public static final int WINCH_POT = 3;
 	private Constants() {
 	}
 
