@@ -8,6 +8,7 @@ import com.sun.squawk.util.MathUtils;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Jaguar;
 import edu.wpi.first.wpilibj.SpeedController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.t4069.year2.robots.Constants;
 import frc.t4069.year2.utils.math.LowPassFilter;
 
@@ -94,13 +95,15 @@ public class DriveTrain {
 		double cosTheta = Math.cos(theta);
 		leftMotorSpeed = (sinTheta + cosTheta) * r;
 		rightMotorSpeed = (sinTheta - cosTheta) * r;
+                SmartDashboard.putNumber("Left motors", leftMotorSpeed);
+                SmartDashboard.putNumber("Right motors", rightMotorSpeed);
 		//Log.log("Left: " + leftMotorSpeed + " Right: " + rightMotorSpeed);
 		tankDrive(leftMotorSpeed, rightMotorSpeed);
 	}
 
 	/**
 	 * Gets distance traveled since last reset. Will return an incorrect value
-	 * if any turning has taken place s'ince the last reset.
+	 * if any turning has taken place since the last reset.
 	 */
 	public double getDistance() {
 		//double value = (m_leftEnc.getDistance() + m_rightEnc.getDistance()) / 2;
@@ -140,7 +143,7 @@ public class DriveTrain {
 	 * Stops robot by setting the speed of the controller to 0 (remember that
 	 * the ESC should be on brake mode)
 	 */
-	public void hardBreak() {
+	public void hardBrake() {
 		m_leftESC.set(0);
 		m_rightESC.set(0);
 	}

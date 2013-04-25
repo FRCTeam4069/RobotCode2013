@@ -16,7 +16,7 @@ public class Shooter {
         setAngle(getIncline());
     }
 
-    class Output implements PIDOutput {
+    static class Output implements PIDOutput {
 
         public double value = 0;
 
@@ -25,7 +25,7 @@ public class Shooter {
         }
     }
 
-    class RPMEncoder implements PIDSource {
+    static class RPMEncoder implements PIDSource {
 
         private Encoder m_encoder;
         private long lastTime = -1337;
@@ -60,23 +60,10 @@ public class Shooter {
             return currentValue;
         }
     }
-
-    class AnglePotentiometer implements PIDSource {
-
-        private Potentiometer m_potentiometer;
-        //  private LowPassFilter m_lpf = new LowPassFilter(5);
-
-        public AnglePotentiometer(Potentiometer pot) {
-            m_potentiometer = pot;
-        }
-
-        public double pidGet() {
-            return (m_potentiometer.getAngle(true));/// 39);
-        }
-    }
     protected SpeedController m_VFDBack;
     protected SpeedController m_VFDFront;
     protected LowPassFilter m_backLPF, m_frontLPF;
+    public boolean fastMode = false;
     protected SpeedController m_Turret, m_Incliner;
     protected DoubleSolenoid m_Reloader;
     protected Compressor m_Compressor;
@@ -87,16 +74,17 @@ public class Shooter {
     private PIDController m_FrontShootPC;
     private PIDSource m_FrontShootPIDSource;
     private PIDOutput m_FrontShootPIDOutput;
-    private PIDSource m_inclinepidsource;
-    private PIDOutput m_inclinepidoutput;
+    private PIDSource m_inclinepidsource, m_turnpidsource;
+    private PIDOutput m_inclinepidoutput, m_turnpidoutput;
     private double inclined = 0,//0 initial constant
-            inclinei = 0.0005//0.0009 //0.005 initial constant 
-            , inclinep = 0.075; //0.15 initial constant
+            inclinei = 0.0013//0.0012//0.0009//0.0009 //0.005 initial constant 
+            , inclinep = 0.05; //0.15 initial constant
+    private double turnd = 0, turni = 0.092, turnp = 0.9;
     private LowPassFilter m_InclineLPF = new LowPassFilter(50);
     private LowPassFilter m_TurnLPF = new LowPassFilter(10);
 
     public Shooter() {
-        this(90);
+        this(45);
     }
 
     public Shooter(double RC) {
@@ -123,25 +111,25 @@ public class Shooter {
         m_Compressor = compressor;
         m_Incliner = incliner;
         m_Turret = turner;
-        m_TurningPot = new Potentiometer(turnPot, -180, 72); // magic
-        m_RisingPot = new Potentiometer(risePot, -263.150, 92.0444649); // is friendship
-        m_inclinepidsource = new AnglePotentiometer(m_RisingPot);
-        m_inclinepidoutput = new Output();
-        m_inclinePC = new PIDController(inclinep, inclinei, inclined,
-                m_inclinepidsource, m_inclinepidoutput, 0.025);
-        m_inclinePC.setOutputRange(-0.5, 0.5);
-        m_inclinePC.setInputRange(0, 39);
-        //m_inclinePC.setTolerance(1.5);
-        m_inclinePC.setAbsoluteTolerance(0.08);
-        m_Compressor.start();
-    }
+        m_TurningPot = new Potentiometer(turnPot, 0, -1); // not using an actual angle, 
+        // because we're too lazy to calibrate it
 
-    public void compress(boolean enable) {
-        if (enable) {
-            m_Compressor.start();
-        } else {
-            m_Compressor.stop();
-        }
+        m_RisingPot = new Potentiometer(risePot, -263.150, 92.0444649);
+        m_inclinepidsource = m_RisingPot;
+        m_inclinepidoutput = new Output();
+        m_turnpidsource = m_TurningPot;
+        m_turnpidoutput = new Output();
+        m_inclinePC = new PIDController(inclinep, inclinei, inclined,
+                m_inclinepidsource, m_inclinepidoutput, 0.050); //(,,0.025)
+        m_inclinePC.setOutputRange(-0.59, 0.59);
+        m_inclinePC.setInputRange(0, 39);
+        m_turnPC = new PIDController(turnp, turni, turnd, m_turnpidsource, m_turnpidoutput, 0.050);
+        m_turnPC.setInputRange(0.7, 1.9);
+        m_turnPC.setOutputRange(-1, 1);
+        //  m_inclinePC.setTolerance(1.5);
+        m_turnPC.setAbsoluteTolerance(0.05);
+        m_inclinePC.setAbsoluteTolerance(0.37);
+        m_Compressor.start();
     }
 
     public double getIncline() {
@@ -150,6 +138,21 @@ public class Shooter {
 
     public double getIncline(boolean degrees) {
         return m_RisingPot.getAngle(degrees);
+    }
+
+    public void increaseAngle(double angle) {
+        SmartDashboard.putNumber("Set angle", setAngle);
+        if (setAngle < 0) {
+            setAngle = getIncline() + angle;
+        } else {
+            setAngle += angle;
+            m_inclinePC.reset();
+            m_inclinePC.enable();
+        }
+    }
+
+    public void decreaseAngle(double angle) {
+        increaseAngle(-angle);
     }
 
     public boolean getPressureSwitch() {
@@ -180,6 +183,7 @@ public class Shooter {
     }
 
     public boolean stabilize() {
+        SmartDashboard.putNumber("Set angle", setAngle);
         if (setAngle < 0) {
             return false;
         }
@@ -220,14 +224,20 @@ public class Shooter {
     }
 
     public void inclinePID(double target) {
-
+        if (m_inclinePC.getSetpoint() != target) {
+            m_inclinePC.reset();
+        }
         if (!m_inclinePC.isEnable()) {
             m_inclinePC.enable();
         }
         m_inclinePC.setSetpoint(target); /// 39);
         SmartDashboard.putNumber("Error", m_inclinePC.getError());
         SmartDashboard.putNumber("PID Value:", m_inclinePC.get());
-        inclineChecked(-m_inclinePC.get());
+        if (!m_inclinePC.onTarget()) {
+            inclineChecked(-m_inclinePC.get());
+        } else {
+            inclineChecked(0);
+        }
     }
 
     public void load() {
@@ -238,19 +248,11 @@ public class Shooter {
         m_Reloader.set(DoubleSolenoid.Value.kReverse);
     }
 
-    public void setInclineTarget(double angle) {
-        m_inclinePC.setSetpoint(angle);
-        if (!m_inclinePC.isEnable()) {
-            m_inclinePC.enable();
-        }
-    }
-    public boolean fastMode = false;
-
     public void shoot() {
         if (!fastMode) {
-            shoot(0.85, 0.90);
+            shoot(0.80, 0.85);
         } else {
-            shoot(0.9, 1);
+            shoot(0.95, 1);
         }
     }
 
@@ -268,6 +270,31 @@ public class Shooter {
     }
 
     public void turn(double speed) {
-        m_Turret.set(speed * 0.5);
+        turnChecked(speed * 0.5);
+    }
+    public void turnChecked(double speed) {
+        SmartDashboard.putNumber("Turret speed", speed);
+    m_Turret.set(speed);
+    }
+
+    public void turnCentre() {
+        turnPID(1.334);
+    }
+
+    public void turnPID(double target) {
+        if (m_turnPC.getSetpoint() != target) {
+            m_turnPC.reset();
+        }
+        if (!m_turnPC.isEnable()) {
+            m_turnPC.enable();
+        }
+        m_turnPC.setSetpoint(target);
+        SmartDashboard.putNumber("Turn error", m_turnPC.getError());
+        SmartDashboard.putNumber("Turn PID Value:", m_turnPC.get());
+        //if (!m_turnPC.onTarget()) {
+            turnChecked((-m_turnPC.get() * 1.5) + 0.5);
+        //} else {
+        //    turn(0);
+        //}
     }
 }

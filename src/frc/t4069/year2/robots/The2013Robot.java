@@ -44,21 +44,27 @@ public class The2013Robot extends IterativeRobot {
 
     public void autonomousInit() {
         autonomousStart = new Date();
+        lastShot = null;
+        frisbeesShot = 0;
     }
     int frisbeesShot = 0;
 
     public void autonomousPeriodic() {
 //SmartDashboard.putNumber("Frisbees shot", frisbeesShot);
 //SmartDashboard.putString("Last shot", lastShot.toString());
+       // climber.gotoDriveAngle();
         if (frisbeesShot >= 3 && new Date().getTime() - lastShot.getTime() > 2500) {
-           // shooter.inclinePID(8);
+            // shooter.inclinePID(8);
+            drivetrain.tankDrive(-0.07, -0.07);
             return;
         }
-        shooter.inclinePID(26.8);
+        if (new Date().getTime() - autonomousStart.getTime() <= 6000) {
+            shooter.inclinePID(26.9);
+        } else shooter.incline(0);
         shooter.shoot();
-        if (new Date().getTime() - autonomousStart.getTime() > 4000) {
+        if (new Date().getTime() - autonomousStart.getTime() > 6000) {
             if (lastShot == null
-                    || new Date().getTime() - lastShot.getTime() > 1900) {
+                    || new Date().getTime() - lastShot.getTime() > 2000) {
                 frisbeesShot++;
                 shooter.reload();
                 lastShot = new Date();
@@ -72,6 +78,8 @@ public class The2013Robot extends IterativeRobot {
 
     private void processDriveTrain(final boolean arcade) {
         if (arcade) {
+            SmartDashboard.putNumber("Rotate value", drivegc.getLeftStick().x);
+            SmartDashboard.putNumber("Speed value", drivegc.getTrigger());
             drivetrain.arcadeDrive(m_speedlimit * -drivegc.getTrigger(),
                     drivegc.getLeftStick().x * m_turnlimit * m_speedlimit);
         } else {
@@ -92,18 +100,17 @@ public class The2013Robot extends IterativeRobot {
         shooter = new Shooter();
         climber = new Winch();
         // For knowing whose code is on the robot.
-        //SmartDashboard.putString("Author", Version.author);
-        //SmartDashboard.putString("Version", Version.version);
+        SmartDashboard.putString("Author", Version.author);
+        SmartDashboard.putString("Version", Version.version);
         Log.log("Robot initialized.");
-        // backChannel1 = new DigitalInput(5);
-        // backChannel2 = new DigitalInput(6);
-        // enc = new Encoder(5,6);
     }
 
+    //public void disabledPeriodic() {
+    //  climber.gotoAngle(90);
+    //}
     public void teleopInit() {
+        shooterStart = new Date();
         ARCADE = m_ds.getDigitalIn(1);
-        // shooter.compress();
-
     }
     Thread debugThread = new Thread(new Runnable() {
         public void run() {
@@ -126,19 +133,24 @@ public class The2013Robot extends IterativeRobot {
         // Log.log("" + shooter.getIncline());
         // processShooter();
         processDriveTrain(ARCADE);
-        processClimber();
+        processClimber();/*
+        if (drivegc.getButton(GameController.BTN_B)) {
+            shooter.inclinePID(13);
+            shooter.turnPID(0);
+        }*/
         // drivetrain.tankDrive(1, 1);
         // Log.log("Encoder: " + enc.get());
         SmartDashboard.putNumber("Tilter angle", shooter.getIncline());
         SmartDashboard.putNumber("Turret voltage", shooter.getTurnVoltage());
         SmartDashboard.putNumber("Turret angle", shooter.getTurn());
         SmartDashboard.putNumber("Climber voltage", climber.getAngle(true));
+        
     }
     Date solenoidStart;
-    int count = 0;
     boolean lastSolenoidButton = false;
-    boolean lastStabilizeButton = false;
-
+    Date shooterStart = new Date();
+    boolean lastIncreaseButton, lastDecreaseButton;
+private static final double FULL_COURT = 17.42;
     private void processShooter() {
         if (joystick.getRawButton(1) && !lastSolenoidButton) {
             solenoidStart = new Date();
@@ -146,47 +158,67 @@ public class The2013Robot extends IterativeRobot {
         if (solenoidStart != null
                 && new Date().getTime() - solenoidStart.getTime() < 80) {
             shooter.reload();
+            if (shooterStart != null)
+            shooterStart = new Date(shooterStart.getTime() + 2000);
         } else {
             shooter.load();
         }
         lastSolenoidButton = joystick.getRawButton(1);
-        if (joystick.getRawButton(6)) {
-            if (!lastStabilizeButton) {
-                shooter.setAngle();
-            }
-        }
-
-        lastStabilizeButton = joystick.getRawButton(6);
+        SmartDashboard.putNumber("Time until up to speed", shooterStart == null ? 4 : Math.max(0, 4000 - (new Date().getTime() - shooterStart.getTime())) / 10);
         if (joystick.getRawButton(11)) {
             shooter.shoot(0.95, 1);
         } else if (joystick.getRawButton(2)) {
+            if (shooterStart == null) {
+                shooterStart = new Date();
+            }
+            if (new Date().getTime() - shooterStart.getTime() > 4000) {
+                SmartDashboard.putString("At Speed", "?");
+                SmartDashboard.putString("Spinning Up", "");
+            } else {
+                SmartDashboard.putString("At Speed", "");
+                SmartDashboard.putString("Spinning Up", "?");
+            }
             shooter.shoot();
         } else {
+            SmartDashboard.putString("At Speed", "");
+            SmartDashboard.putString("Spinning Up", "?");
+            shooterStart = null;
             shooter.stop();
         }
-        if (Math.abs(joystick.getRawAxis(2)) > 0.01 || shooter.isAngleSet()) {
+        if (Math.abs(joystick.getRawAxis(2)) > 0.1) {
             shooter.unsetAngle();
             shooter.incline(joystick.getRawAxis(2));
             shooter.disableInclinePID();
-        } else if (joystick.getRawButton(7)) {
+       /* } else if (joystick.getRawButton(6) && !lastIncreaseButton) {
+            Log.log("Button 6 pressed!");
+            shooter.increaseAngle(1);
+        } else if (joystick.getRawButton(5) && !lastDecreaseButton) {
+            Log.log("Button 5 pressed!");
+            shooter.decreaseAngle(1);
+        */} else if (joystick.getRawButton(7)) {
             shooter.inclinePID(24);
         } else if (joystick.getRawButton(9)) {
             shooter.inclinePID(8);
         } else if (joystick.getRawButton(8)) {
-            shooter.inclinePID(26.8);
+            shooter.inclinePID(27.1);
         } else if (joystick.getRawButton(10)) {
-            shooter.inclinePID(17);
-        } else if (joystick.getRawButton(12)) {
-            shooter.inclinePID(18);
+            shooter.inclinePID(FULL_COURT);
+   //     } else if (joystick.getRawButton(12)) {
+     //       shooter.inclinePID(18);
         } else {
-           if (! shooter.stabilize()) shooter.incline(0);
+       //     if (!shooter.stabilize()) {
+             shooter.incline(0);
+            //}
         }
-        if (count % 5 == 0) {
-       //     Log.log("Inclination: " + shooter.getIncline() + "Yaw: "
-         //           + shooter.getTurn());
+       // if (Math.abs(joystick.getRawAxis(1)) > 0.1) {
+        shooter.turn(joystick.getRawAxis(1));
+       /* } else if (joystick.getRawButton(12)) {
+        shooter.turnCentre();
         }
+        else shooter.turn(0);*/
+        lastIncreaseButton = joystick.getRawButton(6);
+        lastDecreaseButton = joystick.getRawButton(5);
 
-        count += (count > 300000 ? -count : 1);
         shooter.turn(joystick.getRawAxis(1));
         // shooter.turn
         // ( joystick.getRawButton(9) && !joystick.getRawButton(8)) ? 1 :

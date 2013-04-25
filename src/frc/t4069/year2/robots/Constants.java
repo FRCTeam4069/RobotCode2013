@@ -31,7 +31,7 @@ public class Constants {
 	// Analog
 
 	public static final int INCLINER_POT = 2;
-	public static final int TURN_POT = 1;
+	public static final int TURN_POT = 6;
 
 	// Joystick Ports
 	public static final int GCPORT = 2;
@@ -39,6 +39,10 @@ public class Constants {
 	public static final int GCPORT2 = 1;
 
 	// Digital
+        
+        
+        
+        
 	// Solenoid
 	public static final int RELOADER_SOLENOID_FORWARD = 1;
 	public static final int RELOADER_SOLENOID_BACKWARD = 2;

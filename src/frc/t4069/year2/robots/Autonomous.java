@@ -1,7 +1,7 @@
 package frc.t4069.year2.robots;
 
 public class Autonomous {
-/*	private String[] parameters;
+	/*private String[] parameters;
 	private boolean[] completed;
 	public static final String SHOOTER_SPEED = "SHOOTER_SPEED",
 			HORIZ_ANGLE = "HORIZ_ANGLE", VERT_ANGLE = "VERT_ANGLE",
@@ -41,8 +41,7 @@ public class Autonomous {
 			case VERT_ANGLE:
 				double angle = Double.parseDouble(param
 						.split("=")[1]);
-				The2013Robot.shooter.setInclineTarget(angle);
-				The2013Robot.shooter.inclinePID();
+				The2013Robot.shooter.inclinePID(angle);
 				finished = Math.abs(1-(The2013Robot.shooter.getIncline() / angle)) < 0.09;
 				break;
 			case HORIZ_ANGLE:
