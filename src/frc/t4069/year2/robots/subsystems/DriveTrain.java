@@ -52,7 +52,7 @@ public class DriveTrain {
 
 	public DriveTrain(double RC) {
 		this(new Jaguar(Constants.LEFT_MOTOR),
-				new Jaguar(Constants.RIGHT_MOTOR), RC);
+				new Jaguar(Constants.RIGHT_MOTOR), 0);//RC);
 	}
 
 	/**

@@ -210,16 +210,17 @@ private static final double FULL_COURT = 17.42;
              shooter.incline(0);
             //}
         }
-       // if (Math.abs(joystick.getRawAxis(1)) > 0.1) {
+        if (Math.abs(joystick.getRawAxis(1)) > 0.1) {
+     
         shooter.turn(joystick.getRawAxis(1));
-       /* } else if (joystick.getRawButton(12)) {
-        shooter.turnCentre();
-        }
-        else shooter.turn(0);*/
+        } else if (joystick.getRawButton(12)) {
+         shooter.turnCentre();
+       }
+        else shooter.turn(0);
         lastIncreaseButton = joystick.getRawButton(6);
         lastDecreaseButton = joystick.getRawButton(5);
 
-        shooter.turn(joystick.getRawAxis(1));
+        
         // shooter.turn
         // ( joystick.getRawButton(9) && !joystick.getRawButton(8)) ? 1 :
         // joystick.getRawButton(8) ? -1 : 0);

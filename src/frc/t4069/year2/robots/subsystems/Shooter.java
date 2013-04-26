@@ -79,7 +79,7 @@ public class Shooter {
     private double inclined = 0,//0 initial constant
             inclinei = 0.0013//0.0012//0.0009//0.0009 //0.005 initial constant 
             , inclinep = 0.05; //0.15 initial constant
-    private double turnd = 0, turni = 0.092, turnp = 0.9;
+    private double turnd = 0, turni = 0.0001, turnp =0.3;
     private LowPassFilter m_InclineLPF = new LowPassFilter(50);
     private LowPassFilter m_TurnLPF = new LowPassFilter(10);
 
@@ -127,7 +127,8 @@ public class Shooter {
         m_turnPC.setInputRange(0.7, 1.9);
         m_turnPC.setOutputRange(-1, 1);
         //  m_inclinePC.setTolerance(1.5);
-        m_turnPC.setAbsoluteTolerance(0.05);
+       // m_turnPC.setAbsoluteTolerance(0.03);
+        m_turnPC.setAbsoluteTolerance(0.03);
         m_inclinePC.setAbsoluteTolerance(0.37);
         m_Compressor.start();
     }
@@ -267,6 +268,7 @@ public class Shooter {
     public void shoot(double backSpeed, double frontSpeed) {
         m_VFDBack.set(-backSpeed);
         m_VFDFront.set(-frontSpeed);
+        
     }
 
     public void turn(double speed) {
@@ -278,9 +280,10 @@ public class Shooter {
     }
 
     public void turnCentre() {
-        turnPID(1.334);
+        turnPID(1.314);
     }
-
+//1.353
+//1.273
     public void turnPID(double target) {
         if (m_turnPC.getSetpoint() != target) {
             m_turnPC.reset();
@@ -291,10 +294,12 @@ public class Shooter {
         m_turnPC.setSetpoint(target);
         SmartDashboard.putNumber("Turn error", m_turnPC.getError());
         SmartDashboard.putNumber("Turn PID Value:", m_turnPC.get());
-        //if (!m_turnPC.onTarget()) {
-            turnChecked((-m_turnPC.get() * 1.5) + 0.5);
-        //} else {
-        //    turn(0);
-        //}
+        if (!m_turnPC.onTarget()){
+            turnChecked((-m_turnPC.get()) * (//1.8
+                    1.75
+                    / (Math.abs(m_turnPC.getError()))));
+        } else {
+            turn(0);
+        }
     }
 }
