@@ -17,7 +17,7 @@ public class Potentiometer implements PIDSource {
         this.zeroVoltage = degreeIntercept;
         this.slope = slope;
             AnalogModule.getInstance(AnalogModule.getDefaultAnalogModule()).setSampleRate(100000);
-            AnalogModule.getInstance(AnalogModule.getDefaultAnalogModule()).setOversampleBits(channel, 5);
+            AnalogModule.getInstance(AnalogModule.getDefaultAnalogModule()).setOversampleBits(channel, 6);
         
     }
 

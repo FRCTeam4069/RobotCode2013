@@ -77,8 +77,8 @@ public class Shooter {
     private PIDSource m_inclinepidsource, m_turnpidsource;
     private PIDOutput m_inclinepidoutput, m_turnpidoutput;
     private double inclined = 0,//0 initial constant
-            inclinei = 0.0013//0.0012//0.0009//0.0009 //0.005 initial constant 
-            , inclinep = 0.05; //0.15 initial constant
+            inclinei = 0.0011//0.0012//0.0009//0.0009 //0.005 initial constant 
+            , inclinep = 0.048; //0.15 initial constant
     private double turnd = 0, turni = 0.0001, turnp =0.3;
     private LowPassFilter m_InclineLPF = new LowPassFilter(50);
     private LowPassFilter m_TurnLPF = new LowPassFilter(10);
@@ -121,7 +121,7 @@ public class Shooter {
         m_turnpidoutput = new Output();
         m_inclinePC = new PIDController(inclinep, inclinei, inclined,
                 m_inclinepidsource, m_inclinepidoutput, 0.050); //(,,0.025)
-        m_inclinePC.setOutputRange(-0.59, 0.59);
+        m_inclinePC.setOutputRange(-0.51, 0.59);
         m_inclinePC.setInputRange(0, 39);
         m_turnPC = new PIDController(turnp, turni, turnd, m_turnpidsource, m_turnpidoutput, 0.050);
         m_turnPC.setInputRange(0.7, 1.9);
@@ -280,7 +280,8 @@ public class Shooter {
     }
 
     public void turnCentre() {
-        turnPID(1.314);
+        turnPID(1.315);
+        inclinePID(11);
     }
 //1.353
 //1.273
